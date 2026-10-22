@@ -2062,4 +2062,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 return getString(R.string.card_state_new);
         }
     }
+      private void showWallpaperAdjust() {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Wallpaper")
+                .setMessage("Pelarasan wallpaper akan ditambah di sini.")
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .show();
+      }  
 }
