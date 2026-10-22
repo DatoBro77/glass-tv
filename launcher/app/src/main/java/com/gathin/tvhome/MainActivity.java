@@ -2069,5 +2069,5 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
             .show();
       }
-      }  
+      
 }
