@@ -2063,11 +2063,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
       private void showWallpaperAdjust() {
-    new android.app.AlertDialog.Builder(this)
-            .setTitle("Wallpaper")
-            .setMessage("Pelarasan wallpaper akan ditambah di sini.")
-            .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
-            .show();
+    android.content.Intent intent = new android.content.Intent(
+            android.content.Intent.ACTION_OPEN_DOCUMENT);
+    intent.setType("image/*");
+    intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+
+    try {
+        startActivityForResult(intent, 2026);
+    } catch (Exception e) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Wallpaper")
+                .setMessage("Cannot Show Picture Album.")
+                .setPositiveButton("OK", null)
+                .show();
+    }
       }
-      
-}
