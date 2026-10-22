@@ -209,6 +209,13 @@
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView
+    android:id="@+id/btnWallpaper"
+    style="@style/TopMenuButton"
+    android:text="@string/wallpaper"
+    android:drawableStart="@drawable/ic_move"
+    android:nextFocusDown="@+id/grid" />
+
+                <TextView
                     android:id="@+id/btnSettings"
                     style="@style/TopMenuButton"
                     android:layout_width="42dp"
