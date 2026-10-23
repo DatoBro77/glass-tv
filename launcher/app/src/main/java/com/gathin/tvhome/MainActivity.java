@@ -544,6 +544,7 @@ private Config config;
             }, 900);
         } else {
             wallView.setImageBitmap(bmp);
+            applyWallpaperTransform();
             if (blur != null) Backdrop.present(blur, 0);
             else blurBackdrop(bmp);
         }
