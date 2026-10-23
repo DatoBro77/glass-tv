@@ -176,8 +176,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long wallShownAt;
     private android.widget.ImageView wallView;
     private android.graphics.Bitmap wallBitmap;
-    /** Settings kept for the places refresh, which runs after onCreate. */
-    private Config config;
+
+// Wallpaper position and zoom
+private float wallpaperX = 0f;
+private float wallpaperY = 0f;
+private float wallpaperZoom = 1.0f;
+
+/** Settings kept for the places refresh, which runs after onCreate. */
+private Config config;
+
     /** Pictures of places are on (see PlaceWallpapers); they are dimmed behind the tiles. */
     private boolean placesMode;
     private volatile boolean placesRefreshRunning;
