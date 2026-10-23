@@ -428,7 +428,7 @@ private Config config;
         btnInputs = findViewById(R.id.btnInputs);
         View btnSettings = findViewById(R.id.btnSettings);
         View btnWallpaper = findViewById(R.id.btnWallpaper);
-        btnWallpaper.setOnClickListener(v -> showWallpaperAdjust());
+        btnWallpaper.setOnClickListener(v -> showWallpaperControls());
         btnInputs.setOnClickListener(v -> showInputs());
         btnWifi.setOnClickListener(v -> openNetworkPill());
         btnWifi.setOnLongClickListener(v -> {
@@ -597,6 +597,57 @@ private void applyWallpaperTransform() {
     wallView.setScaleY(wallpaperZoom);
     wallView.setTranslationX(wallpaperX);
     wallView.setTranslationY(wallpaperY);
+}
+
+private void showWallpaperControls() {
+    android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+    layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+    layout.setGravity(android.view.Gravity.CENTER);
+    int pad = 12;
+    layout.setPadding(pad, pad, pad, pad);
+
+    android.widget.Button up = new android.widget.Button(this);
+    up.setText("↑ Atas");
+    layout.addView(up);
+
+    android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+    row.setGravity(android.view.Gravity.CENTER);
+
+    android.widget.Button left = new android.widget.Button(this);
+    left.setText("← Kiri");
+    row.addView(left);
+
+    android.widget.Button right = new android.widget.Button(this);
+    right.setText("Kanan →");
+    row.addView(right);
+
+    layout.addView(row);
+
+    android.widget.Button down = new android.widget.Button(this);
+    down.setText("↓ Bawah");
+    layout.addView(down);
+
+    android.widget.Button zoomIn = new android.widget.Button(this);
+    zoomIn.setText("Zoom +");
+    layout.addView(zoomIn);
+
+    android.widget.Button zoomOut = new android.widget.Button(this);
+    zoomOut.setText("Zoom −");
+    layout.addView(zoomOut);
+
+    android.view.View.OnClickListener update = v -> applyWallpaperTransform();
+    up.setOnClickListener(v -> { wallpaperY -= 30f; update.onClick(v); });
+    down.setOnClickListener(v -> { wallpaperY += 30f; update.onClick(v); });
+    left.setOnClickListener(v -> { wallpaperX -= 30f; update.onClick(v); });
+    right.setOnClickListener(v -> { wallpaperX += 30f; update.onClick(v); });
+    zoomIn.setOnClickListener(v -> { wallpaperZoom = Math.min(3f, wallpaperZoom + 0.1f); update.onClick(v); });
+    zoomOut.setOnClickListener(v -> { wallpaperZoom = Math.max(1f, wallpaperZoom - 0.1f); update.onClick(v); });
+
+    new android.app.AlertDialog.Builder(this)
+            .setTitle("Laraskan Wallpaper")
+            .setView(layout)
+            .setNegativeButton("Tutup", null)
+            .show();
 }
     /** Switches to the next picture every wallpaper interval while Home is in front. */
     private final Runnable wallTick = new Runnable() {
