@@ -589,7 +589,14 @@ private Config config;
             });
         });
     }
+private void applyWallpaperTransform() {
+    if (wallView == null) return;
 
+    wallView.setScaleX(wallpaperZoom);
+    wallView.setScaleY(wallpaperZoom);
+    wallView.setTranslationX(wallpaperX);
+    wallView.setTranslationY(wallpaperY);
+}
     /** Switches to the next picture every wallpaper interval while Home is in front. */
     private final Runnable wallTick = new Runnable() {
         @Override
