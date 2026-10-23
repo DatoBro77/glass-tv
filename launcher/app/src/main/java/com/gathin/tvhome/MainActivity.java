@@ -2077,4 +2077,34 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .setPositiveButton("OK", null)
                 .show();
     }
-      }
+}         
+@Override
+protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+    super.onActivityResult(requestCode, resultCode, data);
+
+    if (requestCode == 2026 && resultCode == RESULT_OK
+            && data != null && data.getData() != null) {
+        try {
+            android.net.Uri uri = data.getData();
+            java.io.InputStream input =
+                    getContentResolver().openInputStream(uri);
+
+            if (input != null) {
+                android.graphics.Bitmap bmp =
+                        android.graphics.BitmapFactory.decodeStream(input);
+                input.close();
+
+                if (bmp != null) {
+                    setWallpaper(bmp, true);
+                }
+            }
+        } catch (Exception e) {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Wallpaper")
+                    .setMessage("Cannot load selected picture.")
+                    .setPositiveButton("OK", null)
+                    .show();
+          }
+     }
+}
+}     
