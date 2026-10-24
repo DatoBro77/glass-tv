@@ -2369,7 +2369,7 @@ protected void onActivityResult(int requestCode, int resultCode,
             }
 
             
-if (!savedFiles.isEmpty()) {
+                if (!savedFiles.isEmpty()) {
     wallpapers = new java.util.ArrayList<>(savedFiles);
 
     getSharedPreferences("wallpaper", MODE_PRIVATE)
@@ -2397,4 +2397,13 @@ if (!savedFiles.isEmpty()) {
             android.widget.Toast.LENGTH_SHORT
     ).show();
 }
+
+} catch (Exception e) {
+    new AlertDialog.Builder(this)
+            .setTitle("Wallpaper")
+            .setMessage("Gambar tidak dapat dibuka atau disimpan.")
+            .setPositiveButton("OK", null)
+            .show();
+}
+    }
 }
