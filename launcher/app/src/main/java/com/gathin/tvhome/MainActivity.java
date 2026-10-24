@@ -281,13 +281,34 @@ wallpaperZoom = wallpaperPrefs.getFloat("zoom", 1f);
         
 customWallpaperActive = wallpaperPrefs.getBoolean("custom_active", false);
 
-if (customWallpaperActive) {
-    java.io.File customFile =
-            new java.io.File(getFilesDir(), "custom_wallpaper.jpg");
 
-    if (customFile.exists()) {
+if (customWallpaperActive) {
+    java.io.File folder =
+            new java.io.File(getFilesDir(), "custom_wallpapers");
+
+    java.io.File[] files = folder.listFiles(
+            (dir, name) -> name.startsWith("wallpaper_")
+                    && name.endsWith(".jpg")
+    );
+
+    if (files != null && files.length > 0) {
+        java.util.Arrays.sort(
+                files,
+                java.util.Comparator.comparing(
+                        java.io.File::getName
+                )
+        );
+
+        wallpapers = new java.util.ArrayList<>(
+                java.util.Arrays.asList(files)
+        );
+
+        java.io.File firstFile = files[0];
+
         wallDecoder.execute(() -> {
-            android.graphics.Bitmap bmp = decodeWallpaper(customFile);
+            android.graphics.Bitmap bmp =
+                    decodeWallpaper(firstFile);
+
             handler.post(() -> {
                 if (!isDestroyed() && bmp != null) {
                     setWallpaper(bmp, false);
@@ -790,7 +811,7 @@ removeCustom.setOnClickListener(v -> {
     private final Runnable wallTick = new Runnable() {
         @Override
         public void run() {
-            if (!customWallpaperActive && wallpapers.size() >= 2) showNextWallpaper(true);
+            if (wallpapers.size() >= 2) showNextWallpaper(true);
             handler.postDelayed(this, wallpaperIntervalMs);
         }
     };
@@ -824,7 +845,7 @@ removeCustom.setOnClickListener(v -> {
     private void startWallpaperRotation() {
         refreshPlacesIfDue();
         handler.removeCallbacks(wallTick);
-        if (customWallpaperActive || wallpapers.size() < 2 || wallpaperIntervalMs <= 0) return;
+        if (wallpapers.size() < 2 || wallpaperIntervalMs <= 0) return;
         long waited = android.os.SystemClock.elapsedRealtime() - wallShownAt;
         // A picture that fell due while you were in an app waits a few seconds: decoding, blurring
         // and fading it the moment you come back competed with Home for the TV's slow CPU.
@@ -2347,33 +2368,33 @@ protected void onActivityResult(int requestCode, int resultCode,
                 savedFiles.add(file);
             }
 
-            if (!savedFiles.isEmpty()) {
-                android.graphics.Bitmap bmp =
-                        decodeWallpaper(savedFiles.get(0));
+            
+if (!savedFiles.isEmpty()) {
+    wallpapers = new java.util.ArrayList<>(savedFiles);
 
-                customWallpaperActive = true;
+    getSharedPreferences("wallpaper", MODE_PRIVATE)
+            .edit()
+            .putBoolean("custom_active", true)
+            .putInt("index", 0)
+            .apply();
 
-                getSharedPreferences("wallpaper", MODE_PRIVATE)
-                        .edit()
-                        .putBoolean("custom_active", true)
-                        .apply();
+    customWallpaperActive = true;
+    wallShownAt = android.os.SystemClock.elapsedRealtime();
 
-                setWallpaper(bmp, true);
+    android.graphics.Bitmap bmp =
+            decodeWallpaper(wallpapers.get(0));
 
-                android.widget.Toast.makeText(
-                        this,
-                        savedFiles.size() + " gambar berjaya disimpan",
-                        android.widget.Toast.LENGTH_SHORT
-                ).show();
-            }
-
-        } catch (Exception e) {
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("Wallpaper")
-                    .setMessage("Gambar tidak dapat dibuka atau disimpan.")
-                    .setPositiveButton("OK", null)
-                    .show();
-        }
+    if (bmp != null) {
+        setWallpaper(bmp, true);
     }
+
+    handler.removeCallbacks(wallTick);
+    startWallpaperRotation();
+
+    android.widget.Toast.makeText(
+            this,
+            savedFiles.size() + " gambar berjaya disimpan",
+            android.widget.Toast.LENGTH_SHORT
+    ).show();
 }
 }
