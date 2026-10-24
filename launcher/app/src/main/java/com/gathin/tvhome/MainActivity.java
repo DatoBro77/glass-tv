@@ -546,7 +546,7 @@ if (customWallpaperActive) {
         if (bmp == null) return;
         if (wallView == null) {
             wallView = new android.widget.ImageView(this);
-            wallView.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+            wallView.setScaleType(android.widget.ImageView.ScaleType.MATRIX);
             // Photos are bright: dim them so the clock, names and tiles stay readable.
             if (placesMode) wallView.setColorFilter(0xFF7A7A7A, android.graphics.PorterDuff.Mode.MULTIPLY);
             root.addView(wallView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -620,13 +620,31 @@ handler.postDelayed(() -> {
         });
     }
 private void applyWallpaperTransform() {
-    if (wallView == null) return;
+    if (wallView == null || wallBitmap == null) return;
 
-    wallView.setScaleX(wallpaperZoom);
-    wallView.setScaleY(wallpaperZoom);
-    wallView.setTranslationX(wallpaperX);
-    wallView.setTranslationY(wallpaperY);
-}
+    android.graphics.Matrix matrix = new android.graphics.Matrix();
+
+    float viewWidth = wallView.getWidth();
+    float viewHeight = wallView.getHeight();
+
+    if (viewWidth <= 0 || viewHeight <= 0) return;
+
+    float imageWidth = wallBitmap.getWidth();
+    float imageHeight = wallBitmap.getHeight();
+
+    float scale = Math.max(
+            viewWidth / imageWidth,
+            viewHeight / imageHeight
+    ) * wallpaperZoom;
+
+    float dx = (viewWidth - imageWidth * scale) / 2f + wallpaperX;
+    float dy = (viewHeight - imageHeight * scale) / 2f + wallpaperY;
+
+    matrix.setScale(scale, scale);
+    matrix.postTranslate(dx, dy);
+
+    wallView.setImageMatrix(matrix);
+    }
 
 private void showWallpaperControls() {
     android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
