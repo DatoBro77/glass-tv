@@ -176,7 +176,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long wallShownAt;
     private android.widget.ImageView wallView;
     private android.graphics.Bitmap wallBitmap;
-
+    private boolean customWallpaperActive = false;
 // Wallpaper position and zoom
 private float wallpaperX = 0f;
 private float wallpaperY = 0f;
@@ -271,11 +271,36 @@ private Config config;
         wallpapers = cfg.wallpapers;
         wallpaperIntervalMs = cfg.wallpaperIntervalMs;
         placesMode = cfg.places;
+
+        android.content.SharedPreferences wallpaperPrefs =
+        getSharedPreferences("wallpaper", MODE_PRIVATE);
+
+wallpaperX = wallpaperPrefs.getFloat("position_x", 0f);
+wallpaperY = wallpaperPrefs.getFloat("position_y", 0f);
+wallpaperZoom = wallpaperPrefs.getFloat("zoom", 1f);
+        
+customWallpaperActive = wallpaperPrefs.getBoolean("custom_active", false);
+
+if (customWallpaperActive) {
+    java.io.File customFile =
+            new java.io.File(getFilesDir(), "custom_wallpaper.jpg");
+
+    if (customFile.exists()) {
+        wallDecoder.execute(() -> {
+            android.graphics.Bitmap bmp = decodeWallpaper(customFile);
+            handler.post(() -> {
+                if (!isDestroyed() && bmp != null) {
+                    setWallpaper(bmp, false);
+                }
+            });
+        });
+    }
+}
         // Places only, when they are on: never the theme's own pictures, even before the first
         // week's places have arrived.
         if (placesMode) wallpapers = PlaceWallpapers.list(this);
-        if (!wallpapers.isEmpty()) showNextWallpaper(false);
-        else if (cfg.wallpaper != null && !placesMode) setWallpaper(decodeWallpaper(cfg.wallpaper), false);
+        if (!customWallpaperActive && !wallpapers.isEmpty()) showNextWallpaper(false);
+        else if (!customWallpaperActive && cfg.wallpaper != null && !placesMode) setWallpaper(decodeWallpaper(cfg.wallpaper), false);
         glass = findViewById(R.id.glass);
         ambient = findViewById(R.id.ambient);
         Backdrop.setWorker(wallDecoder, handler);
@@ -539,9 +564,13 @@ private Config config;
             if (blur != null) Backdrop.present(blur, 800);
             else blurBackdrop(bmp);
             // Drop the old picture once the fade is done, so only one 1080p bitmap stays in memory.
-            handler.postDelayed(() -> {
-                if (wallBitmap == bmp) wallView.setImageBitmap(bmp);
-            }, 900);
+            
+handler.postDelayed(() -> {
+    if (wallBitmap == bmp) {
+        wallView.setImageBitmap(bmp);
+        applyWallpaperTransform();
+    }
+}, 900);
         } else {
             wallView.setImageBitmap(bmp);
             applyWallpaperTransform();
@@ -643,6 +672,75 @@ private void showWallpaperControls() {
     zoomIn.setOnClickListener(v -> { wallpaperZoom = Math.min(3f, wallpaperZoom + 0.1f); update.onClick(v); });
     zoomOut.setOnClickListener(v -> { wallpaperZoom = Math.max(1f, wallpaperZoom - 0.1f); update.onClick(v); });
 
+
+    android.widget.Button save = new android.widget.Button(this);
+    save.setText("Simpan Kedudukan");
+    layout.addView(save);
+
+    android.widget.Button reset = new android.widget.Button(this);
+    reset.setText("Reset Kedudukan");
+    layout.addView(reset);
+
+    save.setOnClickListener(v -> {
+        getSharedPreferences("wallpaper", MODE_PRIVATE)
+                .edit()
+                .putFloat("position_x", wallpaperX)
+                .putFloat("position_y", wallpaperY)
+                .putFloat("zoom", wallpaperZoom)
+                .apply();
+
+        android.widget.Toast.makeText(this, "Kedudukan disimpan", android.widget.Toast.LENGTH_SHORT).show();
+    });
+
+
+reset.setOnClickListener(v -> {
+    wallpaperX = 0f;
+    wallpaperY = 0f;
+    wallpaperZoom = 1f;
+
+    getSharedPreferences("wallpaper", MODE_PRIVATE)
+            .edit()
+            .putFloat("position_x", wallpaperX)
+            .putFloat("position_y", wallpaperY)
+            .putFloat("zoom", wallpaperZoom)
+            .apply();
+
+    applyWallpaperTransform();
+});
+    android.widget.Button removeCustom = new android.widget.Button(this);
+removeCustom.setText("Buang Wallpaper Pilihan");
+layout.addView(removeCustom);
+
+removeCustom.setOnClickListener(v -> {
+    new android.app.AlertDialog.Builder(this)
+            .setTitle("Buang Wallpaper Pilihan")
+            .setMessage("Kembali kepada wallpaper asal Glass TV?")
+            .setNegativeButton("Batal", null)
+            .setPositiveButton("Buang", (dialog, which) -> {
+                customWallpaperActive = false;
+
+                getSharedPreferences("wallpaper", MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("custom_active", false)
+                        .putFloat("position_x", 0f)
+                        .putFloat("position_y", 0f)
+                        .putFloat("zoom", 1f)
+                        .apply();
+
+                wallpaperX = 0f;
+                wallpaperY = 0f;
+                wallpaperZoom = 1f;
+
+                if (!wallpapers.isEmpty()) {
+                    showNextWallpaper(true);
+                    startWallpaperRotation();
+                } else if (config != null && config.wallpaper != null && !placesMode) {
+                    setWallpaper(decodeWallpaper(config.wallpaper), true);
+                }
+            })
+            .show();
+});
+
     new android.app.AlertDialog.Builder(this)
             .setTitle("Laraskan Wallpaper")
             .setView(layout)
@@ -653,7 +751,7 @@ private void showWallpaperControls() {
     private final Runnable wallTick = new Runnable() {
         @Override
         public void run() {
-            if (wallpapers.size() >= 2) showNextWallpaper(true);
+            if (!customWallpaperActive && wallpapers.size() >= 2) showNextWallpaper(true);
             handler.postDelayed(this, wallpaperIntervalMs);
         }
     };
@@ -668,7 +766,7 @@ private void showWallpaperControls() {
                 placesRefreshRunning = false;
                 if (!changed || isDestroyed()) return;
                 List<File> places = PlaceWallpapers.list(this);
-                if (places.isEmpty()) return;
+                if (places.isEmpty() || customWallpaperActive) return;
                 // Last week's pictures are gone: show one of this week's straight away, so the
                 // name on the shelf and the picture behind it always match.
                 wallpapers = places;
@@ -687,7 +785,7 @@ private void showWallpaperControls() {
     private void startWallpaperRotation() {
         refreshPlacesIfDue();
         handler.removeCallbacks(wallTick);
-        if (wallpapers.size() < 2 || wallpaperIntervalMs <= 0) return;
+        if (customWallpaperActive || wallpapers.size() < 2 || wallpaperIntervalMs <= 0) return;
         long waited = android.os.SystemClock.elapsedRealtime() - wallShownAt;
         // A picture that fell due while you were in an app waits a few seconds: decoding, blurring
         // and fading it the moment you come back competed with Home for the TV's slow CPU.
@@ -2152,25 +2250,52 @@ protected void onActivityResult(int requestCode, int resultCode, android.content
             && data != null && data.getData() != null) {
         try {
             android.net.Uri uri = data.getData();
-            java.io.InputStream input =
-                    getContentResolver().openInputStream(uri);
+            java.io.File customFile =
+                    new java.io.File(getFilesDir(), "custom_wallpaper.jpg");
 
-            if (input != null) {
-                android.graphics.Bitmap bmp =
-                        android.graphics.BitmapFactory.decodeStream(input);
-                input.close();
+            try (java.io.InputStream input =
+                         getContentResolver().openInputStream(uri);
+                 java.io.FileOutputStream output =
+                         new java.io.FileOutputStream(customFile)) {
 
-                if (bmp != null) {
-                    setWallpaper(bmp, true);
+                if (input == null) {
+                    throw new java.io.IOException("Cannot open selected picture");
+                }
+
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
                 }
             }
+
+            android.graphics.Bitmap bmp = decodeWallpaper(customFile);
+
+            if (bmp != null) {
+                customWallpaperActive = true;
+
+                getSharedPreferences("wallpaper", MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("custom_active", true)
+                        .apply();
+
+                setWallpaper(bmp, true);
+
+                android.widget.Toast.makeText(
+                        this,
+                        "Wallpaper pilihan disimpan",
+                        android.widget.Toast.LENGTH_SHORT
+                ).show();
+            } else {
+                throw new java.io.IOException("Cannot decode selected picture");
+            }
+
         } catch (Exception e) {
             new android.app.AlertDialog.Builder(this)
                     .setTitle("Wallpaper")
-                    .setMessage("Cannot load selected picture.")
+                    .setMessage("Gambar tidak dapat dibuka atau disimpan.")
                     .setPositiveButton("OK", null)
                     .show();
-          }
-     }
+        }
+    }
 }
-}     
