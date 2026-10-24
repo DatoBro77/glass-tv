@@ -2399,7 +2399,7 @@ protected void onActivityResult(int requestCode, int resultCode,
 }
 
 } catch (Exception e) {
-    new AlertDialog.Builder(this)
+    new android.app.AlertDialog.Builder(this)
             .setTitle("Wallpaper")
             .setMessage("Gambar tidak dapat dibuka atau disimpan.")
             .setPositiveButton("OK", null)
