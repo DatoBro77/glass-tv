@@ -707,6 +707,16 @@ reset.setOnClickListener(v -> {
 
     applyWallpaperTransform();
 });
+    android.widget.Button chooseAlbum = new android.widget.Button(this);
+chooseAlbum.setText("Pilih Gambar Dari Album");
+layout.addView(chooseAlbum);
+
+chooseAlbum.setOnClickListener(v -> {
+    android.content.Intent intent =
+            new android.content.Intent(android.content.Intent.ACTION_PICK);
+    intent.setType("image/*");
+    startActivityForResult(intent, 2026);
+});
     android.widget.Button removeCustom = new android.widget.Button(this);
 removeCustom.setText("Buang Wallpaper Pilihan");
 layout.addView(removeCustom);
