@@ -68,7 +68,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
+import java.io.InputStream;
+import java.io.FileOutputStream;
 /**
  * tvOS style home: black, a pinned dock row, an app grid, and one glass highlight that springs between tiles.
  */
@@ -96,6 +97,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The top-right buttons and the two rectangles used to line them up with the dock. */
     private View topRow, topSettings;
     private final Rect alignCard = new Rect(), alignButton = new Rect();
+    private static final int PICK_WALLPAPERS_REQUEST = 2026;
+    private final List<File> customWallpapers = new ArrayList<>();
+    private boolean customWallpaperActive = false;
     /** How much of the space between the side paddings the top shelf may use. */
     private static final float HERO_WIDTH_SHARE = 0.40f;
     /** The name is one line, and may run wider than the description, up to this share. */
@@ -428,9 +432,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         btnSettings.setOnClickListener(v -> open(systemIntent(Settings.ACTION_SETTINGS)));
         btnSettings.setOnLongClickListener(v -> {
-            if (!moduleCards) return false;   // off: a long press does nothing, as before the feature
-            showModuleCards();
-            return true;
+        openWallpaperPicker();
+        return true;
         });
 
         // Keep focus on the top bar at its ends and at the top: Android's focus finder would otherwise
@@ -2029,7 +2032,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         dropIn(popup, panel, anchor, Gravity.END);
         rows.getChildAt(0).requestFocus();
     }
+    private void openWallpaperPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("image/*");
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
 
+        try {
+            startActivityForResult(intent, PICK_WALLPAPERS_REQUEST);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Album gambar tidak dapat dibuka", Toast.LENGTH_SHORT).show();
+        }
+    }
     private Cards.Card cardFor(String pkg) {
         for (Cards.Card c : cards) if (c.pkg.equals(pkg)) return c;
         return null;
