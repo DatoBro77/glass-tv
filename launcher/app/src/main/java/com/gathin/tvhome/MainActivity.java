@@ -2282,35 +2282,75 @@ removeCustom.setOnClickListener(v -> {
     }
 }         
 @Override
-protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+protected void onActivityResult(int requestCode, int resultCode,
+                                android.content.Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
 
-    if (requestCode == 2026 && resultCode == RESULT_OK
-            && data != null && data.getData() != null) {
+    if (requestCode == 2027 && resultCode == RESULT_OK
+            && data != null) {
         try {
-            android.net.Uri uri = data.getData();
-            java.io.File customFile =
-                    new java.io.File(getFilesDir(), "custom_wallpaper.jpg");
+            java.util.ArrayList<android.net.Uri> selectedUris =
+                    new java.util.ArrayList<>();
 
-            try (java.io.InputStream input =
-                         getContentResolver().openInputStream(uri);
-                 java.io.FileOutputStream output =
-                         new java.io.FileOutputStream(customFile)) {
+            if (data.getClipData() != null) {
+                android.content.ClipData clip = data.getClipData();
 
-                if (input == null) {
-                    throw new java.io.IOException("Cannot open selected picture");
+                for (int i = 0; i < clip.getItemCount(); i++) {
+                    selectedUris.add(clip.getItemAt(i).getUri());
                 }
-
-                byte[] buffer = new byte[8192];
-                int count;
-                while ((count = input.read(buffer)) != -1) {
-                    output.write(buffer, 0, count);
-                }
+            } else if (data.getData() != null) {
+                selectedUris.add(data.getData());
             }
 
-            android.graphics.Bitmap bmp = decodeWallpaper(customFile);
+            if (selectedUris.isEmpty()) {
+                throw new java.io.IOException("No images selected");
+            }
 
-            if (bmp != null) {
+            java.io.File folder =
+                    new java.io.File(getFilesDir(), "custom_wallpapers");
+
+            if (!folder.exists() && !folder.mkdirs()) {
+                throw new java.io.IOException("Cannot create folder");
+            }
+
+            java.util.ArrayList<java.io.File> savedFiles =
+                    new java.util.ArrayList<>();
+
+            for (int i = 0; i < selectedUris.size(); i++) {
+                java.io.File file = new java.io.File(
+                        folder, "wallpaper_" + i + ".jpg");
+
+                try (java.io.InputStream input =
+                             getContentResolver().openInputStream(
+                                     selectedUris.get(i));
+                     java.io.FileOutputStream output =
+                             new java.io.FileOutputStream(file)) {
+
+                    if (input == null) {
+                        throw new java.io.IOException(
+                                "Cannot open selected picture");
+                    }
+
+                    byte[] buffer = new byte[8192];
+                    int count;
+
+                    while ((count = input.read(buffer)) != -1) {
+                        output.write(buffer, 0, count);
+                    }
+                }
+
+                if (decodeWallpaper(file) == null) {
+                    throw new java.io.IOException(
+                            "Cannot decode selected picture");
+                }
+
+                savedFiles.add(file);
+            }
+
+            if (!savedFiles.isEmpty()) {
+                android.graphics.Bitmap bmp =
+                        decodeWallpaper(savedFiles.get(0));
+
                 customWallpaperActive = true;
 
                 getSharedPreferences("wallpaper", MODE_PRIVATE)
@@ -2322,11 +2362,9 @@ protected void onActivityResult(int requestCode, int resultCode, android.content
 
                 android.widget.Toast.makeText(
                         this,
-                        "Wallpaper pilihan disimpan",
+                        savedFiles.size() + " gambar berjaya disimpan",
                         android.widget.Toast.LENGTH_SHORT
                 ).show();
-            } else {
-                throw new java.io.IOException("Cannot decode selected picture");
             }
 
         } catch (Exception e) {
