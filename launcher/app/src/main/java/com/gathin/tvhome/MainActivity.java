@@ -725,15 +725,26 @@ reset.setOnClickListener(v -> {
 
     applyWallpaperTransform();
 });
-    android.widget.Button chooseAlbum = new android.widget.Button(this);
-chooseAlbum.setText("Pilih Gambar Dari Album");
+android.widget.Button chooseAlbum = new android.widget.Button(this);
+chooseAlbum.setText("Pilih Banyak Gambar");
 layout.addView(chooseAlbum);
 
 chooseAlbum.setOnClickListener(v -> {
     android.content.Intent intent =
-            new android.content.Intent(android.content.Intent.ACTION_PICK);
+            new android.content.Intent(
+                    android.content.Intent.ACTION_GET_CONTENT
+            );
     intent.setType("image/*");
-    startActivityForResult(intent, 2026);
+    intent.putExtra(
+            android.content.Intent.EXTRA_ALLOW_MULTIPLE,
+            true
+    );
+    startActivityForResult(
+            android.content.Intent.createChooser(
+                    intent, "Pilih Gambar"
+            ),
+            2027
+    );
 });
     android.widget.Button removeCustom = new android.widget.Button(this);
 removeCustom.setText("Buang Wallpaper Pilihan");
