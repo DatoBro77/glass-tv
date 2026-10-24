@@ -2404,7 +2404,7 @@ protected void onActivityResult(int requestCode, int resultCode,
             .setMessage("Gambar tidak dapat dibuka atau disimpan.")
             .setPositiveButton("OK", null)
             .show();
-}
+        }
     }
 }
 }
