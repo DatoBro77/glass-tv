@@ -68,7 +68,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
+import java.io.InputStream;
+import java.io.FileOutputStream;
 /**
  * tvOS style home: black, a pinned dock row, an app grid, and one glass highlight that springs between tiles.
  */
@@ -96,6 +97,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The top-right buttons and the two rectangles used to line them up with the dock. */
     private View topRow, topSettings;
     private final Rect alignCard = new Rect(), alignButton = new Rect();
+    private static final int PICK_WALLPAPERS_REQUEST = 2026;
+    private final List<File> customWallpapers = new ArrayList<>();
+    private boolean customWallpaperActive = false;
     /** How much of the space between the side paddings the top shelf may use. */
     private static final float HERO_WIDTH_SHARE = 0.40f;
     /** The name is one line, and may run wider than the description, up to this share. */
@@ -176,7 +180,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long wallShownAt;
     private android.widget.ImageView wallView;
     private android.graphics.Bitmap wallBitmap;
-    private boolean customWallpaperActive = false;
 // Wallpaper position and zoom
 private float wallpaperX = 0f;
 private float wallpaperY = 0f;
@@ -271,6 +274,25 @@ private Config config;
         wallpapers = cfg.wallpapers;
         wallpaperIntervalMs = cfg.wallpaperIntervalMs;
         placesMode = cfg.places;
+        File customFolder = new File(getFilesDir(), "custom_wallpapers");
+        File[] customFiles = customFolder.listFiles((dir, name) ->
+                name.toLowerCase(Locale.ROOT).matches("wallpaper_.*\\.(jpg|jpeg|png)"));
+
+        if (customFiles != null && customFiles.length > 0
+                && getSharedPreferences("wallpaper", MODE_PRIVATE)
+                .getBoolean("custom_active", false)) {
+            List<File> savedWallpapers = new ArrayList<>();
+            for (File file : customFiles) {
+                if (decodeWallpaper(file) != null) {
+                    savedWallpapers.add(file);
+                }
+            }
+            if (!savedWallpapers.isEmpty()) {
+                Collections.sort(savedWallpapers);
+                wallpapers = savedWallpapers;
+                placesMode = false;
+            }
+        }
 
         android.content.SharedPreferences wallpaperPrefs =
         getSharedPreferences("wallpaper", MODE_PRIVATE);
@@ -483,9 +505,8 @@ if (customWallpaperActive) {
         });
         btnSettings.setOnClickListener(v -> open(systemIntent(Settings.ACTION_SETTINGS)));
         btnSettings.setOnLongClickListener(v -> {
-            if (!moduleCards) return false;   // off: a long press does nothing, as before the feature
-            showModuleCards();
-            return true;
+        openWallpaperPicker();
+        return true;
         });
 
         // Keep focus on the top bar at its ends and at the top: Android's focus finder would otherwise
@@ -2255,11 +2276,22 @@ removeCustom.setOnClickListener(v -> {
         dropIn(popup, panel, anchor, Gravity.END);
         rows.getChildAt(0).requestFocus();
     }
+        private void openWallpaperPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("image/*");
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
 
+        try {
+            startActivityForResult(intent, PICK_WALLPAPERS_REQUEST);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Album gambar tidak dapat dibuka", Toast.LENGTH_SHORT).show();
+        }
+        }     
     private Cards.Card cardFor(String pkg) {
         for (Cards.Card c : cards) if (c.pkg.equals(pkg)) return c;
         return null;
-    }
+      }
 
     /** Writes the state of every row in the Module cards list from the current card list. */
     private void updateCardStates(LinearLayout rows) {
@@ -2307,7 +2339,7 @@ protected void onActivityResult(int requestCode, int resultCode,
                                 android.content.Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
 
-    if (requestCode == 2027 && resultCode == RESULT_OK
+    if (requestCode == 2026 && resultCode == RESULT_OK
             && data != null) {
         try {
             java.util.ArrayList<android.net.Uri> selectedUris =
@@ -2371,7 +2403,7 @@ protected void onActivityResult(int requestCode, int resultCode,
             
                 if (!savedFiles.isEmpty()) {
     wallpapers = new java.util.ArrayList<>(savedFiles);
-
+    placesMode = false;
     getSharedPreferences("wallpaper", MODE_PRIVATE)
             .edit()
             .putBoolean("custom_active", true)
