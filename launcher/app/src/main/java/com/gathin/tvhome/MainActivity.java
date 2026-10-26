@@ -826,11 +826,29 @@ removeCustom.setOnClickListener(v -> {
             .show();
 });
 
-    new android.app.AlertDialog.Builder(this)
-            .setTitle("Laraskan Wallpaper")
+    android.widget.TextView title = new android.widget.TextView(this);
+    title.setText("Laraskan Wallpaper");
+    title.setTextSize(20);
+    title.setTextColor(android.graphics.Color.WHITE);
+    title.setGravity(android.view.Gravity.CENTER);
+    title.setPadding(12, 12, 12, 16);
+    layout.addView(title, 0);
+
+    float glassDensity = getResources().getDisplayMetrics().density;
+    layout.setBackground(new GlassDrawable(layout, 20 * glassDensity, glassDensity, null, 0.5f));
+    Backdrop.watch(layout);
+
+    android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
             .setView(layout)
             .setNegativeButton("Tutup", null)
-            .show();
+            .create();
+    dialog.setOnShowListener(d -> {
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+    });
+    dialog.show();
 }
     /** Switches to the next picture every wallpaper interval while Home is in front. */
     private final Runnable wallTick = new Runnable() {
