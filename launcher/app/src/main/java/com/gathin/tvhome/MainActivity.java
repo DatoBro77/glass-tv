@@ -188,6 +188,40 @@ private float wallpaperX = 0f;
 private float wallpaperY = 0f;
 private float wallpaperZoom = 1.0f;
 
+// Simpan kedudukan dan zum secara berasingan bagi setiap gambar.
+private String getWallpaperPositionKey() {
+    android.content.SharedPreferences prefs =
+            getSharedPreferences("wallpaper", MODE_PRIVATE);
+    int index = prefs.getInt("index", -1);
+
+    if (customWallpaperActive && index >= 0 && index < wallpapers.size()) {
+        return "custom_" + wallpapers.get(index).getName();
+    }
+    return "default";
+}
+
+private void saveWallpaperPosition() {
+    String key = getWallpaperPositionKey();
+    getSharedPreferences("wallpaper", MODE_PRIVATE).edit()
+            .putFloat(key + "_x", wallpaperX)
+            .putFloat(key + "_y", wallpaperY)
+            .putFloat(key + "_zoom", wallpaperZoom)
+            .putFloat("position_x", wallpaperX)
+            .putFloat("position_y", wallpaperY)
+            .putFloat("zoom", wallpaperZoom)
+            .apply();
+}
+
+private void loadWallpaperPosition() {
+    String key = getWallpaperPositionKey();
+    android.content.SharedPreferences prefs =
+            getSharedPreferences("wallpaper", MODE_PRIVATE);
+
+    wallpaperX = prefs.getFloat(key + "_x", prefs.getFloat("position_x", 0f));
+    wallpaperY = prefs.getFloat(key + "_y", prefs.getFloat("position_y", 0f));
+    wallpaperZoom = prefs.getFloat(key + "_zoom", prefs.getFloat("zoom", 1f));
+}
+
 /** Settings kept for the places refresh, which runs after onCreate. */
 private Config config;
 
@@ -328,6 +362,9 @@ if (customWallpaperActive) {
                 java.util.Arrays.asList(files)
         );
 
+        getSharedPreferences("wallpaper", MODE_PRIVATE)
+                .edit().putInt("index", 0).apply();
+        loadWallpaperPosition();
         java.io.File firstFile = files[0];
 
         wallDecoder.execute(() -> {
@@ -641,8 +678,10 @@ handler.postDelayed(() -> {
     /** Shows the next picture from the wallpapers folder; the position survives restarts. */
     private void showNextWallpaper(boolean fade) {
         android.content.SharedPreferences prefs = getSharedPreferences("wallpaper", MODE_PRIVATE);
+        if (wallBitmap != null) saveWallpaperPosition();
         int next = (prefs.getInt("index", -1) + 1) % wallpapers.size();
         prefs.edit().putInt("index", next).apply();
+        loadWallpaperPosition();
         wallShownAt = android.os.SystemClock.elapsedRealtime();
         final File file = wallpapers.get(next);
         // On a cold start, name the place straight away: waiting for the decode showed the app's name
@@ -746,12 +785,7 @@ private void showWallpaperControls() {
     layout.addView(reset);
 
     save.setOnClickListener(v -> {
-        getSharedPreferences("wallpaper", MODE_PRIVATE)
-                .edit()
-                .putFloat("position_x", wallpaperX)
-                .putFloat("position_y", wallpaperY)
-                .putFloat("zoom", wallpaperZoom)
-                .apply();
+        saveWallpaperPosition();
 
         android.widget.Toast.makeText(this, "Kedudukan disimpan", android.widget.Toast.LENGTH_SHORT).show();
     });
@@ -762,12 +796,7 @@ reset.setOnClickListener(v -> {
     wallpaperY = 0f;
     wallpaperZoom = 1f;
 
-    getSharedPreferences("wallpaper", MODE_PRIVATE)
-            .edit()
-            .putFloat("position_x", wallpaperX)
-            .putFloat("position_y", wallpaperY)
-            .putFloat("zoom", wallpaperZoom)
-            .apply();
+    saveWallpaperPosition();
 
     applyWallpaperTransform();
 });
@@ -2498,6 +2527,7 @@ protected void onActivityResult(int requestCode, int resultCode,
             .apply();
 
     customWallpaperActive = true;
+    loadWallpaperPosition();
     wallShownAt = android.os.SystemClock.elapsedRealtime();
 
     android.graphics.Bitmap bmp =
