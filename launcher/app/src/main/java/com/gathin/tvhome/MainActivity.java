@@ -793,20 +793,22 @@ chooseAlbum.setOnClickListener(v -> {
     );
 });
     android.widget.Button removeCustom = new android.widget.Button(this);
-removeCustom.setText("Buang Wallpaper Pilihan");
+removeCustom.setText("Reset Wallpaper Asal");
 layout.addView(removeCustom);
 
 removeCustom.setOnClickListener(v -> {
     new android.app.AlertDialog.Builder(this)
-            .setTitle("Buang Wallpaper Pilihan")
+            .setTitle("Reset Wallpaper Asal")
             .setMessage("Kembali kepada wallpaper asal Glass TV?")
             .setNegativeButton("Batal", null)
-            .setPositiveButton("Buang", (dialog, which) -> {
+            .setPositiveButton("Reset", (dialog, which) -> {
                 customWallpaperActive = false;
+                placesMode = config != null && config.places;
 
                 getSharedPreferences("wallpaper", MODE_PRIVATE)
                         .edit()
                         .putBoolean("custom_active", false)
+                        .putInt("index", -1)
                         .putFloat("position_x", 0f)
                         .putFloat("position_y", 0f)
                         .putFloat("zoom", 1f)
@@ -816,11 +818,20 @@ removeCustom.setOnClickListener(v -> {
                 wallpaperY = 0f;
                 wallpaperZoom = 1f;
 
-                if (!wallpapers.isEmpty()) {
-                    showNextWallpaper(true);
-                    startWallpaperRotation();
-                } else if (config != null && config.wallpaper != null && !placesMode) {
-                    setWallpaper(decodeWallpaper(config.wallpaper), true);
+                handler.removeCallbacks(wallTick);
+
+                if (config != null) {
+                    wallpapers = config.wallpapers;
+                    if (placesMode) {
+                        wallpapers = PlaceWallpapers.list(this);
+                    }
+
+                    if (!wallpapers.isEmpty()) {
+                        showNextWallpaper(true);
+                        startWallpaperRotation();
+                    } else if (config.wallpaper != null && !placesMode) {
+                        setWallpaper(decodeWallpaper(config.wallpaper), true);
+                    }
                 }
             })
             .show();
@@ -2466,6 +2477,17 @@ protected void onActivityResult(int requestCode, int resultCode,
             }
 
             
+                java.io.File[] oldFiles = folder.listFiles(
+                        (dir, name) -> name.matches("wallpaper_\\d+\\.jpg"));
+
+                if (oldFiles != null) {
+                    for (java.io.File oldFile : oldFiles) {
+                        if (!savedFiles.contains(oldFile)) {
+                            oldFile.delete();
+                        }
+                    }
+                }
+
                 if (!savedFiles.isEmpty()) {
     wallpapers = new java.util.ArrayList<>(savedFiles);
     placesMode = false;
