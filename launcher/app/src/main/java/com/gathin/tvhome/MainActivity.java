@@ -1301,7 +1301,7 @@ removeCustom.setOnClickListener(v -> {
             heroDesc.setLayoutParams(descLp);
         }
         heroDesc.setText(desc);
-        heroDesc.setVisibility(desc.isEmpty() ? View.GONE : View.VISIBLE);
+        heroDesc.setVisibility(View.GONE);
     }
 
     /**
