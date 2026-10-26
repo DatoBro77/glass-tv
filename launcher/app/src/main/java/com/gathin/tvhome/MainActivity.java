@@ -61,6 +61,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -351,6 +354,7 @@ if (customWallpaperActive) {
         heroName = findViewById(R.id.heroName);
         heroDesc = findViewById(R.id.heroDesc);
         heroWhere = findViewById(R.id.heroWhere);
+        loadPrayerTimes();
         // A share of the space between the side paddings, so the description wraps into a column
         // rather than running the width of the screen. The name is one line, allowed a wider share.
         int usable = getResources().getDisplayMetrics().widthPixels - (int) ((55 + 56) * density);
@@ -1231,14 +1235,67 @@ removeCustom.setOnClickListener(v -> {
     }
 
     /** The shelf's two lines. An empty description takes no room, so the title keeps its place. */
+
+    private final Handler prayerHandler = new Handler(Looper.getMainLooper());
+    private String prayerTimesText = "Memuatkan waktu solat Pekan...";
+    private boolean prayerRequestRunning = false;
+
+    private void loadPrayerTimes() {
+        if (prayerRequestRunning) return;
+        prayerRequestRunning = true;
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL("https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=today&zone=PHG02");
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(10000);
+
+                try (java.io.InputStream in = connection.getInputStream();
+                     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[4096];
+                    int count;
+                    while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                    JSONObject rootJson = new JSONObject(out.toString("UTF-8"));
+                    org.json.JSONArray days = rootJson.getJSONArray("prayerTime");
+                    JSONObject day = days.getJSONObject(0);
+                    String text = "Subuh " + day.getString("fajr").substring(0, 5)
+                            + " · Zohor " + day.getString("dhuhr").substring(0, 5)
+                            + " · Asar " + day.getString("asr").substring(0, 5)
+                            + " · Maghrib " + day.getString("maghrib").substring(0, 5)
+                            + " · Isyak " + day.getString("isha").substring(0, 5);
+                    prayerHandler.post(() -> {
+                        prayerTimesText = text;
+                        prayerRequestRunning = false;
+                        if (heroWhere != null) {
+                            heroWhere.setText(prayerTimesText);
+                            heroWhere.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                prayerHandler.post(() -> {
+                    prayerRequestRunning = false;
+                    if (heroWhere != null) {
+                        heroWhere.setText("Waktu solat tidak tersedia");
+                        heroWhere.setVisibility(View.VISIBLE);
+                    }
+                });
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        }).start();
+    }
+
     private void setHeroText(String title, String where, String desc) {
         heroName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, titleSizeSp(title));
         heroName.setText(title);
-        heroWhere.setText(where);
-        heroWhere.setVisibility(where.isEmpty() ? View.GONE : View.VISIBLE);
+        heroWhere.setText(prayerTimesText);
+        heroWhere.setVisibility(View.VISIBLE);
         // The description sits further down under a country line; with none, close under the name.
         ViewGroup.MarginLayoutParams descLp = (ViewGroup.MarginLayoutParams) heroDesc.getLayoutParams();
-        int top = Math.round((where.isEmpty() ? 6f : 9.5f) * density);
+        int top = Math.round(9.5f * density);
         if (descLp.topMargin != top) {
             descLp.topMargin = top;
             heroDesc.setLayoutParams(descLp);
