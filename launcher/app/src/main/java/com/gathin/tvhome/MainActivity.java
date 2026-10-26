@@ -272,7 +272,7 @@ private Config config;
         root.setBackgroundColor(cfg.backgroundColor);
         config = cfg;
         wallpapers = cfg.wallpapers;
-        wallpaperIntervalMs = cfg.wallpaperIntervalMs;
+        wallpaperIntervalMs = 3 * MINUTE_MS;
         placesMode = cfg.places;
         File customFolder = new File(getFilesDir(), "custom_wallpapers");
         File[] customFiles = customFolder.listFiles((dir, name) ->
