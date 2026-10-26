@@ -2415,7 +2415,7 @@ protected void onActivityResult(int requestCode, int resultCode,
                                 android.content.Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
 
-    if (requestCode == 2026 && resultCode == RESULT_OK
+    if ((requestCode == 2026 || requestCode == 2027) && resultCode == RESULT_OK
             && data != null) {
         try {
             java.util.ArrayList<android.net.Uri> selectedUris =
