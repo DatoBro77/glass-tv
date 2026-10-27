@@ -391,6 +391,8 @@ if (customWallpaperActive) {
         heroName = findViewById(R.id.heroName);
         heroDesc = findViewById(R.id.heroDesc);
         heroWhere = findViewById(R.id.heroWhere);
+        if (heroWhere != null) heroWhere.setVisibility(View.GONE);
+        setupPrayerTicker();
         loadPrayerTimes();
         // A share of the space between the side paddings, so the description wraps into a column
         // rather than running the width of the screen. The name is one line, allowed a wider share.
@@ -1297,6 +1299,117 @@ removeCustom.setOnClickListener(v -> {
     private final Handler prayerHandler = new Handler(Looper.getMainLooper());
     private String prayerTimesText = "Memuatkan waktu solat Pekan...";
     private boolean prayerRequestRunning = false;
+    private TextView prayerTicker;
+    private final Handler prayerTickerHandler = new Handler(Looper.getMainLooper());
+    private final Runnable prayerTickerTick = new Runnable() {
+        @Override public void run() {
+            updatePrayerTicker();
+            prayerTickerHandler.postDelayed(this, 60_000L);
+        }
+    };
+
+    private void setupPrayerTicker() {
+        if (prayerTicker != null) return;
+
+        LinearLayout leftBlock = findViewById(R.id.leftBlock);
+        if (leftBlock == null) return;
+
+        prayerTicker = new TextView(this);
+        prayerTicker.setText("☾  Memuatkan waktu solat Pekan...");
+        prayerTicker.setTextColor(Color.argb(235, 255, 255, 255));
+        prayerTicker.setTextSize(12);
+        prayerTicker.setLetterSpacing(0.02f);
+        prayerTicker.setGravity(Gravity.CENTER_VERTICAL);
+        prayerTicker.setSingleLine(true);
+        prayerTicker.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
+        prayerTicker.setMarqueeRepeatLimit(-1);
+        prayerTicker.setHorizontallyScrolling(true);
+        prayerTicker.setSelected(true);
+        prayerTicker.setFocusable(false);
+        prayerTicker.setPadding(
+                Math.round(12 * density), 0,
+                Math.round(12 * density), 0);
+
+        android.graphics.drawable.GradientDrawable glass =
+                new android.graphics.drawable.GradientDrawable();
+        glass.setColor(Color.argb(18, 255, 255, 255));
+        glass.setCornerRadius(7 * density);
+        glass.setStroke(
+                Math.max(1, Math.round(density)),
+                Color.argb(105, 255, 255, 255));
+        prayerTicker.setBackground(glass);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Math.round(30 * density));
+        lp.topMargin = Math.round(7 * density);
+        lp.rightMargin = Math.round(8 * density);
+        leftBlock.addView(prayerTicker, lp);
+
+        updatePrayerTicker();
+        prayerTickerHandler.removeCallbacks(prayerTickerTick);
+        prayerTickerHandler.post(prayerTickerTick);
+    }
+
+    private void updatePrayerTicker() {
+        if (prayerTicker == null) return;
+
+        String[] parts = prayerTimesText.split(" · ");
+        int[] minutes = new int[parts.length];
+        java.util.Arrays.fill(minutes, -1);
+
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        int nowMinutes = now.get(java.util.Calendar.HOUR_OF_DAY) * 60
+                + now.get(java.util.Calendar.MINUTE);
+        int nextIndex = -1;
+        int smallestFuture = Integer.MAX_VALUE;
+
+        for (int i = 0; i < parts.length; i++) {
+            String[] pair = parts[i].trim().split("\\s+", 2);
+            if (pair.length < 2) continue;
+
+            try {
+                String[] hm = pair[1].split(":");
+                int h = Integer.parseInt(hm[0]);
+                int m = Integer.parseInt(hm[1]);
+                if (h < 0 || h > 23 || m < 0 || m > 59) continue;
+
+                minutes[i] = h * 60 + m;
+                int diff = minutes[i] - nowMinutes;
+                if (diff > 0 && diff < smallestFuture) {
+                    smallestFuture = diff;
+                    nextIndex = i;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Jika semua waktu hari ini telah berlalu, Subuh ialah waktu seterusnya.
+        if (nextIndex < 0 && parts.length > 0 && minutes[0] >= 0) {
+            nextIndex = 0;
+        }
+
+        StringBuilder out = new StringBuilder("☾  ");
+        boolean found = false;
+
+        for (int i = 0; i < parts.length; i++) {
+            String[] pair = parts[i].trim().split("\\s+", 2);
+            if (pair.length < 2 || minutes[i] < 0) continue;
+
+            if (found) out.append("  ·  ");
+            if (i == nextIndex) out.append("● ");
+            out.append(pair[0]).append(" ").append(pair[1]);
+            found = true;
+        }
+
+        if (!found) {
+            out.setLength(0);
+            out.append("☾  ").append(prayerTimesText);
+        }
+
+        prayerTicker.setText(out.toString());
+        prayerTicker.setSelected(true);
+    }
 
     private void loadPrayerTimes() {
         if (prayerRequestRunning) return;
@@ -1326,18 +1439,18 @@ removeCustom.setOnClickListener(v -> {
                     prayerHandler.post(() -> {
                         prayerTimesText = text;
                         prayerRequestRunning = false;
-                        if (heroWhere != null) {
-                            heroWhere.setText(prayerTimesText);
-                            heroWhere.setVisibility(View.VISIBLE);
-                        }
+                        if (heroWhere != null) heroWhere.setVisibility(View.GONE);
+                        updatePrayerTicker();
                     });
                 }
             } catch (Exception e) {
                 prayerHandler.post(() -> {
                     prayerRequestRunning = false;
-                    if (heroWhere != null) {
-                        heroWhere.setText("Waktu solat tidak tersedia");
-                        heroWhere.setVisibility(View.VISIBLE);
+                    prayerTimesText = "Waktu solat tidak tersedia";
+                    if (heroWhere != null) heroWhere.setVisibility(View.GONE);
+                    if (prayerTicker != null) {
+                        prayerTicker.setText("☾  " + prayerTimesText);
+                        prayerTicker.setSelected(true);
                     }
                 });
             } finally {
@@ -1349,8 +1462,7 @@ removeCustom.setOnClickListener(v -> {
     private void setHeroText(String title, String where, String desc) {
         heroName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, titleSizeSp(title));
         heroName.setText(title);
-        heroWhere.setText(prayerTimesText);
-        heroWhere.setVisibility(View.VISIBLE);
+        heroWhere.setVisibility(View.GONE);
         // The description sits further down under a country line; with none, close under the name.
         ViewGroup.MarginLayoutParams descLp = (ViewGroup.MarginLayoutParams) heroDesc.getLayoutParams();
         int top = Math.round(9.5f * density);
